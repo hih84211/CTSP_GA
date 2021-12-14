@@ -3,6 +3,7 @@ from Population import *
 from random import Random
 import yaml
 import sys
+import time
 
 
 class CTSP_Config:
@@ -71,6 +72,7 @@ def CTSP_problem(cfg):
 
     # evolution main loop
     for i in range(cfg.generationCount):
+        tic = time.time()
         # create initial offspring population by copying parent pop
         offspring = copy.deepcopy(population)
 
@@ -91,13 +93,14 @@ def CTSP_problem(cfg):
         population.combinePops(offspring)
         population.truncateSelect(cfg.populationSize)
 
+        toc = time.time()
         # print population stats
-        printStats(minmax=minmax, pop=population, gen=i + 1)
+        printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic))
 
 
 # Print some useful stats to screen
 # 可由minmax參數選擇呈現最大值或最小值
-def printStats(minmax, pop, gen):
+def printStats(minmax, pop, gen, tictoc):
     print('Generation:', gen)
     avgval = 0
     mval = pop[0].fit
@@ -121,6 +124,7 @@ def printStats(minmax, pop, gen):
 
     print('Sigma', sigma)
     print('Avg fitness', avgval / len(pop))
+    print('Runtime ', tictoc)
     print('')
 
 
