@@ -151,10 +151,6 @@ def main(argv=None):
         # print config params
         print(cfg)
 
-        '''
-            Problem 1 & Problem 2 分別由 ev3_problem1(cfg) 和 ev3_problem2(cfg)執行
-        '''
-
         print('Clustered-TSP path length minimization start!')
         CTSP_problem(cfg)
         if not options.quietMode:
