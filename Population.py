@@ -2,6 +2,7 @@ import copy
 import math
 from operator import attrgetter
 from Individual import *
+import multiprocessing as mp
 
 
 class Population:
@@ -33,14 +34,26 @@ class Population:
         return copy.deepcopy(self)
 
     def evaluateFitness(self):
-        for individual in self.population:
+        '''for individual in self.population:
             individual.evaluateFitness()
             # print('ind: ', individual.x)
             # print('fit: ', individual.fit)
+        '''
+        p = mp.Pool(mp.cpu_count())
+        p.map_async(self.ind_fitness, self.population, chunksize=2000)
+
+    def ind_fitness(self, individual):
+        individual.evaluateFitness()
 
     def mutate(self):
-        for individual in self.population:
+        '''for individual in self.population:
             individual.mutate()
+        '''
+        p = mp.Pool(mp.cpu_count())
+        p.map_async(self.ind_mutate, self.population, chunksize=2000)
+
+    def ind_mutate(self, individual):
+        individual.mutate()
 
     def crossover(self):
         indexList1 = list(range(len(self)))
@@ -84,7 +97,7 @@ class Population:
         # compete
         newPop = []
         if self.minmax == 0:
-            for index1, index2 in zip(indexList1, indexList2):
+            '''for index1, index2 in zip(indexList1, indexList2):
                 if self[index1].fit < self[index2].fit:
                     newPop.append(copy.deepcopy(self[index1]))
                 elif self[index1].fit > self[index2].fit:
@@ -95,6 +108,14 @@ class Population:
                         newPop.append(copy.deepcopy(self[index1]))
                     else:
                         newPop.append(copy.deepcopy(self[index2]))
+            '''
+            p = mp.Pool(mp.cpu_count())
+            result = p.map_async(self.ind_tournament_lt, zip(indexList1, indexList2), chunksize=2000)
+            results = result.get()
+            for item in results:
+                if not item:
+                    print('NoneType detected!')
+            newPop.extend(results)
         elif self.minmax == 1:
             for index1, index2 in zip(indexList1, indexList2):
                 if self[index1].fit > self[index2].fit:
@@ -111,9 +132,20 @@ class Population:
         # overwrite old pop with newPop
         self.population = newPop
 
+    def ind_tournament_lt(self, indexes):
+        if self[indexes[0]].fit > self[indexes[1]].fit:
+            return copy.deepcopy(self[indexes[0]])
+        elif self[indexes[0]].fit < self[indexes[1]].fit:
+            return copy.deepcopy(self[indexes[1]])
+        else:
+            rn = self.uniprng.random()
+            if rn > 0.5:
+                return copy.deepcopy(self[indexes[0]])
+            else:
+                return copy.deepcopy(self[indexes[1]])
+
     def combinePops(self, otherPop):
         self.population.extend(otherPop.population)
-
 
     def truncateSelect(self, newPopSize):
         # sort by fitness
@@ -128,6 +160,8 @@ class Population:
             s += str(ind) + '\n'
         return s
 
-
+class Population_MP(Population):
+    def __init__(self):
+        super().__init__()
 
 

@@ -100,7 +100,7 @@ def CTSP_problem(cfg):
 
 # Print some useful stats to screen
 # 可由minmax參數選擇呈現最大值或最小值
-def printStats(minmax, pop, gen, tictoc):
+def printStats(minmax, pop, gen, tictoc=.0):
     print('Generation:', gen)
     avgval = 0
     mval = pop[0].fit

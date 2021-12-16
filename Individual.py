@@ -92,9 +92,8 @@ class FullPath(Individual):
 
         for i in range(self.length):
             if self.sigma > self.uniprng.random():
-                # self.uniprng.shuffle(self.x)
                 self.corner_initialize()
-                if self.sigma * 10 > self.uniprng.random():
+                if self.sigma * 20 > self.uniprng.random():
                     self.uniprng.shuffle(self.x)
                 self.fit = None
 
