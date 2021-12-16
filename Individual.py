@@ -45,7 +45,7 @@ class Individual:
 
     def evaluateFitness(self):
         if self.fit == None:
-            self.fit = self.__class__.fitFunc(self.x)
+            self.fit = self.fitFunc(self.x)
 
     def __str__(self):
         return '%0.8e' % self.x + '\t' + '%0.8e' % self.fit + '\t' + '%0.8e' % self.sigma

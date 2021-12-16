@@ -58,14 +58,15 @@ def CTSP_problem(cfg):
 
     FullPath.uniprng = uniprng
     FullPath.normprng = normprng
-    FullPath.uniprng = uniprng
-    Population.uniprng = uniprng
-    Population.crossoverFraction = cfg.crossoverFraction
+    PopulationMP.uniprng = uniprng
+    PopulationMP.crossoverFraction = cfg.crossoverFraction
 
     minmax = 0
 
     # create initial Population (random initialization)
-    population = Population(populationSize=cfg.populationSize, problem_num=2, minmax=minmax)
+    population = PopulationMP(populationSize=cfg.populationSize, minmax=minmax)
+    population.evaluateFitness()
+    print(type(population))
 
     # print initial pop stats
     printStats(minmax=minmax, pop=population, gen=0)
