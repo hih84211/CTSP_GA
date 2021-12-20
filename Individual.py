@@ -2,6 +2,7 @@ import math
 import numpy as np
 import utility
 import copy
+from random import Random
 
 # reuse the individual code from ev3
 class Individual:
@@ -54,21 +55,21 @@ class Individual:
 MB_INFO = utility.MotherBoardInput('mother_board.png', 'rectangles.json').info_extraction()
 RECT_LIST = MB_INFO[0]
 GLUE_WIDTH = MB_INFO[1]
-PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH)
+PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
 class FullPath(Individual):
-    minSigma = 1e-2
+    minSigma = 1e-5
     maxSigma = 1
     learningRate = 1
-    uniprng = None
-    normprng = None
+    uniprng = Random()
+    normprng = Random()
     fitFunc = None
 
     def __init__(self):
         # super().__init__()
         # self.length = 5
         self.sigma = self.uniprng.uniform(0.9, 0.1)  # use "normalized" sigma
-        self.length = len(RECT_LIST)
+        self.length = len(PATH_TOOL.target_regions)
         self.fitFunc = cost_func
         self.x = np.array([Rectangle(r) for r in range(self.length)])
         self.fit = None
@@ -77,9 +78,9 @@ class FullPath(Individual):
         self.evaluateFitness()
 
     def corner_initialize(self):
-        np.vectorize(self.__set_corner_pair)(self.x)
+        np.vectorize(self.set_corner_pair)(self.x)
 
-    def __set_corner_pair(self, r):
+    def set_corner_pair(self, r):
         r.i = self.uniprng.randint(0, 3)
         r.o = PATH_TOOL.get_outcorner(r.rect, r.i)
 
@@ -90,12 +91,13 @@ class FullPath(Individual):
         if self.sigma > self.maxSigma:
             self.sigma = self.maxSigma
 
-        for i in range(self.length):
+        for j in range(self.length):
             if self.sigma > self.uniprng.random():
                 self.corner_initialize()
                 if self.sigma * 20 > self.uniprng.random():
                     self.uniprng.shuffle(self.x)
-                self.fit = None
+        self.fit = None
+        self.evaluateFitness()
 
     def crossover(self, other):
         remain1 = np.array([i for i in range(self.length)])
@@ -158,6 +160,11 @@ class FullPath(Individual):
         other.x = child2
         other.fit = None
 
+        self.mutate()
+        other.mutate()
+
+        return copy.deepcopy(self), copy.deepcopy(other)
+
     def evaluateFitness(self):
         if self.fit == None:
             self.fit = self.fitFunc(self.x)
@@ -205,7 +212,7 @@ def index_of(arr, e):
 def get_interval(len):
     i1 = np.random.randint(0, len - 2)
     i2 = np.random.randint(i1 + 1, len)
-    while((i2 - i1) < 2 or (i2 - i1) == (len-1)):
+    while (i2 - i1) < 7 or (i2 - i1) == (len - 6):
         # print('Too narrow!', (i1, i2))
         return get_interval(len)
     else:
@@ -213,14 +220,10 @@ def get_interval(len):
 
 
 if __name__ == '__main__':
-    from random import Random
-    FullPath.fitFunc = cost_func
-    FullPath.uniprng = Random()
-    FullPath.normprng = Random()
-    p1 = FullPath()
-    p2 = FullPath()
+    for i in range(20):
+        print(get_interval(34))
 
-    print('p1.x:', p1, p1.fit)
+    '''print('p1.x:', p1, p1.fit)
     print('p2.x:', p2, p2.fit)
     print()
 
@@ -236,6 +239,8 @@ if __name__ == '__main__':
     p2.evaluateFitness()
     print('After mutating:')
     p2.evaluateFitness()
-    print(p2, p2.fit)
+    print(p2, p2.fit)'''
+
+
 
 

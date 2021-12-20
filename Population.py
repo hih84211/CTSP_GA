@@ -1,11 +1,13 @@
 import copy
 import math
+from random import Random
 from operator import attrgetter
+import numpy as np
+import main
 from Individual import *
 import multiprocessing as mp
+from functools import partial
 
-CHUNKSIZE = 1
-CORE_RESERVE = 2
 
 class Population:
     """
@@ -13,6 +15,8 @@ class Population:
     """
     uniprng = None
     crossoverFraction = None
+    CORE_RESERVE = None
+    CHUNKSIZE = None
 
     def __init__(self, populationSize, minmax=0):
         """
@@ -36,16 +40,35 @@ class Population:
         return copy.deepcopy(self)
 
     def evaluateFitness(self):
+        print('  Evaluating...')
         for individual in self.population:
             individual.evaluateFitness()
             # print('ind: ', individual.x)
             # print('fit: ', individual.fit)
+        '''
+        temp = []
+        print('Evaluating...')
+        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
+        result = p.map(self.ind_fitness, self.population, chunksize=self.CHUNKSIZE)
+        temp.extend(result)
+        print('Evaluation done!')
+        p.close()
+        p.join()
+        self.population = temp'''
+        print('  Evaluation done!')
+
+    def ind_fitness(self, individual):
+        individual.evaluateFitness()
+        return individual
 
     def mutate(self):
+        print('  Mutating...')
         for individual in self.population:
             individual.mutate()
+        print('  Mutation done!')
 
     def crossover(self):
+        print('  Crossing...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
         self.uniprng.shuffle(indexList1)
@@ -64,9 +87,11 @@ class Population:
                     # print('[index2]: ', index2, tmp[index2])
                     # self[index1].crossover(self[index2])
                     self[index1].crossover(tmp[index2])
+        print('  Crossover done!')
 
     def conductTournament(self):
         # binary tournament
+        print('  Conducting binary tournament...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
 
@@ -113,6 +138,7 @@ class Population:
 
         # overwrite old pop with newPop
         self.population = newPop
+        print('  Binary tournament done!')
 
     def combinePops(self, otherPop):
         self.population.extend(otherPop.population)
@@ -134,6 +160,8 @@ class Population:
 class PopulationMP(Population):
     uniprng = None
     crossoverFraction = None
+    CORE_RESERVE = None
+    CHUNKSIZE = None
 
     def __init__(self, populationSize, minmax=0):
         super().__init__(populationSize, minmax)
@@ -154,42 +182,76 @@ class PopulationMP(Population):
         super().copy()
 
     def evaluateFitness(self):
-        # super().evaluateFitness()
-        p = mp.Pool(mp.cpu_count() - CORE_RESERVE)
-        p.map_async(self.ind_fitness, self.population, chunksize=CHUNKSIZE)
+        super().evaluateFitness()
+        '''
+        temp = []
+        print('  Evaluating...')
+        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
+        result = p.map(self.ind_fitness, self.population, chunksize=self.CHUNKSIZE)
+        temp.extend(result)
+        print('  Evaluation done!')
+        p.close()
+        p.join()
+        self.population = temp'''
 
     def ind_fitness(self, individual):
         individual.evaluateFitness()
+        return individual
 
     def mutate(self):
-        p = mp.Pool(mp.cpu_count() - CORE_RESERVE)
-        p.map_async(self.ind_mutate, self.population, chunksize=CHUNKSIZE)
+        super().mutate()
+        '''
+        print('  Mutating...')
+        temp = []
+        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
+        result = p.map(self.ind_mutate, self.population, chunksize=self.CHUNKSIZE)
+        temp.extend(result)
+        # result.wait(timeout=200)
+        p.close()
+        p.join()
+        self.population = temp
+        print('  Mutation done!')'''
 
     def ind_mutate(self, individual):
         individual.mutate()
+        return individual
 
     def crossover(self):
+        print('  Crossing...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
+
         self.uniprng.shuffle(indexList1)
         self.uniprng.shuffle(indexList2)
-        tmp = copy.deepcopy(self)
 
-        if self.crossoverFraction == 1.0:
-            for index1, index2 in zip(indexList1, indexList2):
-                # self[index1].crossover(self[index2])
-                self[index1].crossover(tmp[index2])
-        else:
-            for index1, index2 in zip(indexList1, indexList2):
-                rn = self.uniprng.random()
-                if rn < self.crossoverFraction:
-                    # print('[index1]: ', index1, self[index1])
-                    # print('[index2]: ', index2, tmp[index2])
-                    # self[index1].crossover(self[index2])
-                    self[index1].crossover(tmp[index2])
+        tmp1 = [self.population[i] for i in indexList1]
+        tmp2 = [self.population[i] for i in indexList2]
+        # tmp1 = copy.deepcopy(self.population)
+        # tmp2 = copy.deepcopy(self.population)
+        self.uniprng.shuffle(tmp1)
+        self.uniprng.shuffle(tmp2)
+        newPop = []
+        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
+        p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
+        result = p.map(p_cross, zip(tmp1, tmp2), chunksize=self.CHUNKSIZE)
+        for i in result:
+            newPop.extend(i)
+        self.population = newPop
+        p.close()
+        p.join()
+        print('  Cross over done!')
+
+    def ind_cross(self, parents, prng, cf):
+        rn = prng
+        if rn.random() < cf:
+            return parents[0].crossover(parents[1])
 
     def conductTournament(self):
         # binary tournament
+
+        super().conductTournament()
+        '''
+        print('  Conducting binary tournament...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
 
@@ -209,31 +271,31 @@ class PopulationMP(Population):
 
         # compete
         newPop = []
+        p = mp.Pool(mp.cpu_count() - CORE_RESERVE)
+        result = None
+        tmp1 = [self[i] for i in indexList1]
+        tmp2 = [self[i] for i in indexList2]
         if self.minmax == 0:
-            p = mp.Pool(mp.cpu_count() - CORE_RESERVE)
-            result = p.map_async(self.ind_tournament_lt, zip(indexList1, indexList2), chunksize=CHUNKSIZE)
-            results = result.get()
-            newPop.extend(results)
+            result = p.map(self.ind_tournament_lt, zip(tmp1, tmp2), chunksize=CHUNKSIZE)
+
         elif self.minmax == 1:
-            p = mp.Pool(mp.cpu_count() - CORE_RESERVE)
-            result = p.map_async(self.ind_tournament_gt, zip(indexList1, indexList2), chunksize=CHUNKSIZE)
-            results = result.get()
-            newPop.extend(results)
+            result = p.map(self.ind_tournament_gt, zip(tmp1, tmp2), chunksize=CHUNKSIZE)
+
+        newPop.extend(result)
 
         # overwrite old pop with newPop
         self.population = newPop
+        p.close()
+        p.join()
+        print('  Binary tournament done!')
+        '''
 
-    def ind_tournament_lt(self, indexes):
-        if self[indexes[0]].fit > self[indexes[1]].fit:
-            return copy.deepcopy(self[indexes[0]])
-        elif self[indexes[0]].fit < self[indexes[1]].fit:
-            return copy.deepcopy(self[indexes[1]])
-        else:
-            rn = self.uniprng.random()
-            if rn > 0.5:
-                return copy.deepcopy(self[indexes[0]])
-            else:
-                return copy.deepcopy(self[indexes[1]])
+    def ind_tournament_lt(self, pairs):
+        if pairs[0].fit > pairs[1].fit:
+            return copy.deepcopy(pairs[0])
+        else:  #self[indexes[0]].fit < self[indexes[1]].fit:
+            return copy.deepcopy(pairs[1])
+
 
     def ind_tournament_gt(self, indexes):
         if self[indexes[0]].fit < self[indexes[1]].fit:
@@ -253,10 +315,65 @@ class PopulationMP(Population):
     def truncateSelect(self, newPopSize):
         super().truncateSelect(newPopSize)
 
+    def has_none(self):
+        i = 0
+        j = 0
+        for ind in self.population:
+            if not ind.fit:
+                i += 1
+            else:
+                j += 1
+        if i:
+            msg = "None detected! " + str(i)
+            print('Popsize: ', self.__len__())
+            print('Not none: ', j)
+            print(msg)
+            raise "None detected! "
+
+    def output(self):
+        print(self.population)
+
     def __str__(self):
         s = ''
         for ind in self:
             s += str(ind) + '\n'
         return s
+
+
+if __name__ == '__main__':
+    seed = 1212
+    crossoverFraction = 0.8
+    pop_size = 2000
+    uniprng = Random()
+    uniprng.seed(seed)
+    normprng = Random()
+    normprng.seed(seed + 101)
+
+    FullPath.uniprng = uniprng
+    FullPath.normprng = normprng
+    Population.uniprng = uniprng
+    Population.crossoverFraction = crossoverFraction
+    Population.CORE_RESERVE = 4
+    Population.CHUNKSIZE = int(pop_size/(mp.cpu_count() - Population.CORE_RESERVE))
+    PopulationMP.uniprng = uniprng
+    PopulationMP.crossoverFraction = crossoverFraction
+    PopulationMP.CORE_RESERVE = 4
+    PopulationMP.CHUNKSIZE = int(pop_size / (mp.cpu_count() - PopulationMP.CORE_RESERVE))
+
+    minmax = 0
+    p1 = PopulationMP(populationSize=pop_size, minmax=minmax)
+    p1.evaluateFitness()
+    #print('p1.fit ', p1.x)
+    main.printStats(minmax=0, pop=p1, gen=0, lb=np.Inf)
+    p1.mutate()
+    p1.evaluateFitness()
+    main.printStats(minmax=0, pop=p1, gen=0, lb=np.Inf)
+    p1.conductTournament()
+    p1.crossover()
+    a = [4, 3]
+    t1 = (1, 2)
+    a.extend(t1)
+    print(a)
+
 
 
