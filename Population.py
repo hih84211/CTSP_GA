@@ -251,7 +251,7 @@ class PopulationMP(Population):
                 result = procPool.map(p_cross, zip(p1, p2), chunksize=self.CHUNKSIZE)
                 for i in result:
                     if i:
-                        newStates.extend(i)
+                        newStates.append(i[0])
 
             for i in range(self.__len__()):
                 self.population[i].x = newStates[i]
