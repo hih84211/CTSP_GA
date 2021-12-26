@@ -90,10 +90,10 @@ class PathToolBox:
         # 0 3
         # 1 2
         #
-        # 0 even:1 odd:2 | even:3 odd:2
-        # 1 even:0 odd:3 | even:2 odd:3
-        # 2 even:3 odd:0 | even:1 odd:0
-        # 3 even:2 odd:1 | even:0 odd:1
+        # 0 even:2 odd:1 | even:2 odd:3
+        # 1 even:3 odd:0 | even:3 odd:2
+        # 2 even:0 odd:3 | even:0 odd:1
+        # 3 even:1 odd:2 | even:1 odd:0
         look_up = [[(1, 2), (0, 3), (3, 0), (2, 1)], [(3, 1), (2, 3), (1, 0), (0, 1)]]
         rect = self.target_regions[rect_index]
         short_side = self.get_shortest_side(rect)

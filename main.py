@@ -2,8 +2,8 @@ import optparse
 
 import numpy as np
 import multiprocessing as mp
-import Population
 from Population import *
+from Individual import  *
 from random import Random
 import yaml
 import sys
@@ -21,7 +21,8 @@ class CTSP_Config:
     """
     # class variables
     sectionName = 'CTSP'
-    options = {'populationSize': (int, True),
+    options = {'CPUCoresPreserved': (int, True),
+               'populationSize': (int, True),
                'generationCount': (int, True),
                'randomSeed': (int, True),
                'crossoverFraction': (float, True)}
@@ -33,7 +34,8 @@ class CTSP_Config:
         ymlcfg = yaml.safe_load(infile)
         infile.close()
         eccfg = ymlcfg.get(self.sectionName, None)
-        if eccfg is None: raise Exception('Missing {} section in cfg file'.format(self.sectionName))
+        if eccfg is None:
+            raise Exception('Missing {} section in cfg file'.format(self.sectionName))
 
         # iterate over options
         for opt in self.options:
@@ -59,59 +61,46 @@ class CTSP_Config:
 
 
 def CTSP_problem(cfg):
-    # start random number generators
-    uniprng = Random()
-    uniprng.seed(cfg.randomSeed)
-    normprng = Random()
-    normprng.seed(cfg.randomSeed + 101)
-    FullPath.uniprng = uniprng
-    FullPath.normprng = normprng
-    Population.uniprng = uniprng
-    Population.crossoverFraction = cfg.crossoverFraction
-    Population.CORE_RESERVE = 4
-    Population.CHUNKSIZE = int(cfg.populationSize / (mp.cpu_count() - Population.CORE_RESERVE))
-    PopulationMP.CORE_RESERVE = 4
-    PopulationMP.CHUNKSIZE = int(cfg.populationSize/(mp.cpu_count() - PopulationMP.CORE_RESERVE))
-    PopulationMP.uniprng = uniprng
-    PopulationMP.crossoverFraction = cfg.crossoverFraction
-
     minmax = 0
     current_best_fit = np.Inf
 
-    start = time.time()
+    start = time.process_time()
+    pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
+
+    initClassVars(cfg)
 
     # create initial Population (random initialization)
     population = PopulationMP(populationSize=cfg.populationSize, minmax=minmax)
-    population.evaluateFitness()
+    population.evaluateFitness(pool)
     print(type(population))
 
     # print initial pop stats
-    printStats(minmax=minmax, pop=population, gen=0, lb=current_best_fit, total_t=(time.time() - start))
+    printStats(minmax=minmax, pop=population, gen=0, lb=current_best_fit, total_t=(time.process_time() - start))
 
     # evolution main loop
     for i in range(cfg.generationCount):
-        tic = time.time()
+        tic = time.process_time()
         # create initial offspring population by copying parent pop
         offspring = copy.deepcopy(population)
 
         # select mating pool
-        #offspring.conductTournament()
+        offspring.conductTournament()
 
         # perform crossover
-        offspring.crossover()
+        offspring.crossover(pool)
 
         # random mutation
-        #offspring.mutate()
+        offspring.mutate()
 
         # update fitness values
         #print(offspring.population)
-        # offspring.evaluateFitness()
+        offspring.evaluateFitness(pool)
 
         # survivor selection: elitist truncation using parents+offspring
         population.combinePops(offspring)
         population.truncateSelect(cfg.populationSize)
 
-        toc = time.time()
+        toc = time.process_time()
         # print population stats
         current_best_fit = printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic),
                                       total_t=(toc - start), lb=current_best_fit)
@@ -124,14 +113,14 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0):
     print('Population size: ', len(pop.population))
     avgval = 0
     mval = pop[0].fit
-    sigma = pop[0].sigma
+    sigma = pop[0].mutRate
     min_ind = pop[0]
     if minmax == 0:
         for ind in pop:
             avgval += ind.fit
             if ind.fit < mval:
                 mval = ind.fit
-                sigma = ind.sigma
+                sigma = ind.mutRate
                 min_ind = ind
         if(mval < lb):
             PATH_TOOL.path_plot(min_ind.x)
@@ -141,7 +130,7 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0):
             avgval += ind.fit
             if ind.fit > mval:
                 mval = ind.fit
-                sigma = ind.sigma
+                sigma = ind.mutRate
             print(ind)
 
         print('Max fitness', mval)
@@ -189,6 +178,28 @@ def main(argv=None):
             print_exc()
         else:
             print(info)
+
+def initClassVars(cfg):
+    uniprng = Random()
+    uniprng.seed(cfg.randomSeed)
+    normprng = Random()
+    normprng.seed(cfg.randomSeed + 101)
+    FullPath.uniprng = uniprng
+    FullPath.normprng = normprng
+    FullPath.fitFunc = cost_func
+    FullPath.crossFunc = crossing
+
+    Population.individualType = FullPath
+    Population.uniprng = uniprng
+    Population.crossoverFraction = cfg.crossoverFraction
+    Population.CORE_RESERVE = 4
+    Population.CHUNKSIZE = int(cfg.populationSize / (mp.cpu_count() - Population.CORE_RESERVE))
+
+    PopulationMP.CORE_RESERVE = 4
+    PopulationMP.CHUNKSIZE = int(cfg.populationSize / (mp.cpu_count() - PopulationMP.CORE_RESERVE))
+    PopulationMP.uniprng = uniprng
+    PopulationMP.crossoverFraction = cfg.crossoverFraction
+
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':

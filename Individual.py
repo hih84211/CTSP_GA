@@ -5,7 +5,7 @@ import copy
 from random import Random
 
 # reuse the individual code from ev3
-class Individual:
+'''class Individual:
     """
     Individual
     """
@@ -21,7 +21,7 @@ class Individual:
     def __init__(self):
         self.x = self.uniprng.uniform(self.minLimit, self.maxLimit)
         self.fit = self.__class__.fitFunc(self.x)
-        self.sigma = self.uniprng.uniform(0.9, 0.1)  # use "normalized" sigma
+        self.mutRate = self.uniprng.uniform(0.9, 0.1)  # use "normalized" mutRate
 
     def crossover(self, other):
         # perform crossover "in-place"
@@ -35,13 +35,13 @@ class Individual:
         other.fit = None
 
     def mutate(self):
-        self.sigma = self.sigma * math.exp(self.learningRate * self.normprng.normalvariate(0, 1))
-        if self.sigma < self.minSigma:
-            self.sigma = self.minSigma
-        if self.sigma > self.maxSigma:
-            self.sigma = self.maxSigma
+        self.mutRate = self.mutRate * math.exp(self.learningRate * self.normprng.normalvariate(0, 1))
+        if self.mutRate < self.minSigma:
+            self.mutRate = self.minSigma
+        if self.mutRate > self.maxSigma:
+            self.mutRate = self.maxSigma
 
-        self.x = self.x + (self.maxLimit - self.minLimit) * self.sigma * self.normprng.normalvariate(0, 1)
+        self.x = self.x + (self.maxLimit - self.minLimit) * self.mutRate * self.normprng.normalvariate(0, 1)
         self.fit = None
 
     def evaluateFitness(self):
@@ -49,7 +49,32 @@ class Individual:
             self.fit = self.fitFunc(self.x)
 
     def __str__(self):
-        return '%0.8e' % self.x + '\t' + '%0.8e' % self.fit + '\t' + '%0.8e' % self.sigma
+        return '%0.8e' % self.x + '\t' + '%0.8e' % self.fit + '\t' + '%0.8e' % self.mutRate
+'''
+
+
+class Individual:
+    """
+    Individual
+    """
+    minMutRate = 1e-100
+    maxMutRate = 1
+    learningRate = None
+    uniprng = None
+    normprng = None
+    fitFunc = None
+
+    def __init__(self):
+        self.fit = self.__class__.fitFunc(self.x)
+        self.mutRate = self.uniprng.uniform(0.9, 0.1)  # use "normalized" mutRate
+
+    def mutateMutRate(self):
+        self.mutRate = self.mutRate * math.exp(self.learningRate * self.normprng.normalvariate(0, 1))
+        if self.mutRate < self.minMutRate: self.mutRate = self.minMutRate
+        if self.mutRate > self.maxMutRate: self.mutRate = self.maxMutRate
+
+    def evaluateFitness(self):
+        if self.fit == None: self.fit = self.__class__.fitFunc(self.x)
 
 
 MB_INFO = utility.MotherBoardInput('mother_board.png', 'rectangles.json').info_extraction()
@@ -57,18 +82,20 @@ RECT_LIST = MB_INFO[0]
 GLUE_WIDTH = MB_INFO[1]
 PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
+
 class FullPath(Individual):
-    minSigma = 1e-5
-    maxSigma = 1
+    minMutRate = 1e-5
+    maxMutRate = 1
     learningRate = 1
     uniprng = Random()
     normprng = Random()
     fitFunc = None
+    crossFunc = None
 
     def __init__(self):
         # super().__init__()
         # self.length = 5
-        self.sigma = self.uniprng.uniform(0.9, 0.1)  # use "normalized" sigma
+        self.mutRate = self.uniprng.uniform(0.9, 0.1)  # use "normalized" mutRate
         self.length = len(PATH_TOOL.target_regions)
         self.fitFunc = cost_func
         self.x = np.array([Rectangle(r) for r in range(self.length)])
@@ -85,85 +112,29 @@ class FullPath(Individual):
         r.o = PATH_TOOL.get_outcorner(r.rect, r.i)
 
     def mutate(self):
-        self.sigma = self.sigma * math.exp(self.learningRate * self.normprng.normalvariate(0, 1))
-        if self.sigma < self.minSigma:
-            self.sigma = self.minSigma
-        if self.sigma > self.maxSigma:
-            self.sigma = self.maxSigma
-
-        for j in range(self.length):
-            if self.sigma > self.uniprng.random():
-                self.corner_initialize()
-                if self.sigma * 20 > self.uniprng.random():
-                    self.uniprng.shuffle(self.x)
-        self.fit = None
-        self.evaluateFitness()
+        super().mutateMutRate()
+        mutated = False
+        if self.mutRate > self.uniprng.random():
+            self.uniprng.shuffle(self.x)
+            mutated = True
+        else:
+            for j in range(self.length):
+                if self.mutRate > self.uniprng.random():
+                    self.corner_initialize()
+                    mutated = True
+        if mutated:
+            self.fit = None
+        # self.evaluateFitness()
 
     def crossover(self, other):
-        remain1 = np.array([i for i in range(self.length)])
-        remain2 = np.array([i for i in range(self.length)])
-        interval = get_interval(self.length)
-
-        p1 = copy.copy(self)
-        p2 = copy.copy(other)
-        child1 = np.full((self.length,), Rectangle(-1))
-        child2 = np.full((self.length,), Rectangle(-1))
-
-        p1_p = p1.x[interval[0]:interval[1]]
-        p2_p = p2.x[interval[0]:interval[1]]
-
-        #
-        for i in range(interval[0], interval[1]):
-            remain1 = np.delete(remain1, index_of(remain1, i)[0])
-            remain2 = np.delete(remain2, index_of(remain2, i)[0])
-            child1[i] = copy.copy(p1.x[i])
-            child2[i] = copy.copy(p2.x[i])
-
-        # find i&j
-        ij_pairs1 = []
-        result1 = np.in1d(p2_p, p1_p)
-        for index in range(len(result1)):
-            if not result1[index]:
-                ij_pairs1.append((p2_p[index], p1_p[index]))
-        ij_pairs2 = []
-        result2 = np.in1d(p1_p, p2_p)
-        for index in range(len(result2)):
-            if not result2[index]:
-                ij_pairs2.append((p1_p[index], p2_p[index]))
-
-        for ij in ij_pairs1:
-            k = index_of(p2.x, ij[1])
-            while (interval[0] <= k < interval[1]):
-                k = index_of(p2.x, p1.x[k])
-
-            try:
-                remain1 = np.delete(remain1, index_of(remain1, k)[0])
-            except Exception as e:
-                print(e.with_traceback())
-            child1[k] = ij[0]
-        for i in remain1:
-            child1[i] = p2.x[i]
-
-        for ij in ij_pairs2:
-            k = index_of(p1.x, ij[1])
-            while (interval[0] <= k < interval[1]):
-                k = index_of(p1.x, p2.x[k])
-            try:
-                remain2 = np.delete(remain2, index_of(remain2, k)[0])
-            except Exception as e:
-                print(e.with_traceback())
-            child2[k] = ij[0]
-        for i in remain2:
-            child2[i] = p1.x[i]
-        self.x = child1
+        self.x, other.x = self.crossFunc((self.x, other.x))
         self.fit = None
-        other.x = child2
         other.fit = None
 
-        self.mutate()
-        other.mutate()
+        # self.mutate()
+        # other.mutate()
 
-        return copy.deepcopy(self), copy.deepcopy(other)
+        # return copy.deepcopy(self), copy.deepcopy(other)
 
     def evaluateFitness(self):
         if self.fit == None:
@@ -196,7 +167,7 @@ class Rectangle:
 # 起點、終點的cost怎麼算？
 def cost_func(path):
     total = 0
-    if(len(path)):
+    if (len(path)):
         last_r = path[0]
         for this_r in path:
             total += PATH_TOOL.dist_euler(RECT_LIST[last_r.rect][last_r.o], RECT_LIST[this_r.rect][this_r.i])
@@ -204,6 +175,79 @@ def cost_func(path):
             last_r = this_r
     return total
 
+def crossing(parents):
+    p1x = parents[0]
+    p2x = parents[1]
+    length = len(p1x)
+    interval = get_interval(length)
+    child1 = np.full((length,), Rectangle(-1))
+    child2 = np.full((length,), Rectangle(-1))
+    remain1 = np.array([i for i in range(length)])
+    remain2 = np.array([i for i in range(length)])
+
+    p1_p = p1x[interval[0]:interval[1]]
+    p2_p = p2x[interval[0]:interval[1]]
+
+    #
+    for i in range(interval[0], interval[1]):
+        remain1 = np.delete(remain1, index_of(remain1, i)[0])
+        remain2 = np.delete(remain2, index_of(remain2, i)[0])
+        child1[i] = copy.copy(p1x[i])
+        child2[i] = copy.copy(p2x[i])
+
+    # find i&j
+    ij_pairs1 = []
+    result1 = np.in1d(p2_p, p1_p)
+    for index in range(len(result1)):
+        if not result1[index]:
+            ij_pairs1.append((p2_p[index], p1_p[index]))
+    ij_pairs2 = []
+    result2 = np.in1d(p1_p, p2_p)
+    for index in range(len(result2)):
+        if not result2[index]:
+            ij_pairs2.append((p1_p[index], p2_p[index]))
+
+    for ij in ij_pairs1:
+        k = index_of(p2x, ij[1])
+        while (interval[0] <= k < interval[1]):
+            k = index_of(p2x, p1x[k])
+
+        try:
+            remain1 = np.delete(remain1, index_of(remain1, k)[0])
+        except Exception as e:
+            print(e.with_traceback())
+        child1[k] = ij[0]
+    for i in remain1:
+        child1[i] = p2x[i]
+
+    for ij in ij_pairs2:
+        k = index_of(p1x, ij[1])
+        while (interval[0] <= k < interval[1]):
+            k = index_of(p1x, p2x[k])
+        try:
+            remain2 = np.delete(remain2, index_of(remain2, k)[0])
+        except Exception as e:
+            print(e.with_traceback())
+        child2[k] = ij[0]
+    for i in remain2:
+        child2[i] = p1x[i]
+
+    return child1, child2
+
+# (state, mutrate, uniprng)
+def mutate(data):
+    state = data[0]
+    length = len(data[0])
+    mutRate = data[1]
+    uniprng = data[2]
+    for j in range(length):
+        if mutRate > uniprng.random():
+            state[j].i = uniprng.randint(0, 3)
+            state[j].o = PATH_TOOL.get_outcorner(state[j].rect, state[j].i)
+    if mutRate * 10 > uniprng.random():
+        uniprng.shuffle(state)
+
+    return state
 
 def index_of(arr, e):
     return np.where(arr == e)[0]
@@ -240,7 +284,3 @@ if __name__ == '__main__':
     print('After mutating:')
     p2.evaluateFitness()
     print(p2, p2.fit)'''
-
-
-
-

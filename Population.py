@@ -15,6 +15,7 @@ class Population:
     """
     uniprng = None
     crossoverFraction = None
+    individualType=None
     CORE_RESERVE = None
     CHUNKSIZE = None
 
@@ -25,7 +26,7 @@ class Population:
         self.population = []
         self.minmax = minmax
         for i in range(populationSize):
-            self.population.append(FullPath())
+            self.population.append(self.__class__.individualType())
 
     def __len__(self):
         return len(self.population)
@@ -39,13 +40,26 @@ class Population:
     def copy(self):
         return copy.deepcopy(self)
 
-    def evaluateFitness(self):
+    def evaluateFitness(self, procPool):
+        inds = []
+        # only need to eval individuals whose states actually changed
+        for individual in self.population:
+            if individual.fit == None:
+                inds.append(individual)
+
+        # compute all individual fitnesses using parallel process Pool
+        #
+        states = [ind.x for ind in inds]
+        fitnesses = procPool.map(self.__class__.individualType.fitFunc, states)
+        for i in range(len(inds)): inds[i].fit = fitnesses[i]
+
+    '''def evaluateFitness(self):
         print('  Evaluating...')
         for individual in self.population:
             individual.evaluateFitness()
             # print('ind: ', individual.x)
             # print('fit: ', individual.fit)
-        '''
+        
         temp = []
         print('Evaluating...')
         p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
@@ -54,14 +68,18 @@ class Population:
         print('Evaluation done!')
         p.close()
         p.join()
-        self.population = temp'''
-        print('  Evaluation done!')
+        self.population = temp
+        print('  Evaluation done!')'''
 
     def ind_fitness(self, individual):
         individual.evaluateFitness()
         return individual
 
     def mutate(self):
+        '''inds = []
+        states = [ind.x for ind in inds]
+        fitnesses = procPool.map(self.__class__.individualType.mutate, states)
+        for i in range(len(inds)): inds[i].fit = fitnesses[i]'''
         print('  Mutating...')
         for individual in self.population:
             individual.mutate()
@@ -181,8 +199,8 @@ class PopulationMP(Population):
     def copy(self):
         super().copy()
 
-    def evaluateFitness(self):
-        super().evaluateFitness()
+    def evaluateFitness(self, pool):
+        super().evaluateFitness(pool)
         '''
         temp = []
         print('  Evaluating...')
@@ -198,48 +216,50 @@ class PopulationMP(Population):
         individual.evaluateFitness()
         return individual
 
-    def mutate(self):
-        super().mutate()
-        '''
-        print('  Mutating...')
-        temp = []
-        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
-        result = p.map(self.ind_mutate, self.population, chunksize=self.CHUNKSIZE)
-        temp.extend(result)
-        # result.wait(timeout=200)
-        p.close()
-        p.join()
-        self.population = temp
-        print('  Mutation done!')'''
+    def mutate(self, procPool = None):
+
+        if procPool:
+            print('  Mutating...')
+            temp = []
+            result = procPool.map(self.ind_mutate, self.population, chunksize=self.CHUNKSIZE)
+            temp.extend(result)
+            self.population = temp
+            print('  Mutation done!')
+        else:
+            super().mutate()
+
+
 
     def ind_mutate(self, individual):
         individual.mutate()
         return individual
 
-    def crossover(self):
-        print('  Crossing...')
-        indexList1 = list(range(len(self)))
-        indexList2 = list(range(len(self)))
+    def crossover(self, procPool=None):
+        if procPool:
+            print('  Crossing...')
 
-        self.uniprng.shuffle(indexList1)
-        self.uniprng.shuffle(indexList2)
+            indexList1 = list(range(len(self)))
+            indexList2 = list(range(len(self)))
 
-        tmp1 = [self.population[i] for i in indexList1]
-        tmp2 = [self.population[i] for i in indexList2]
-        # tmp1 = copy.deepcopy(self.population)
-        # tmp2 = copy.deepcopy(self.population)
-        self.uniprng.shuffle(tmp1)
-        self.uniprng.shuffle(tmp2)
-        newPop = []
-        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
-        p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
-        result = p.map(p_cross, zip(tmp1, tmp2), chunksize=self.CHUNKSIZE)
-        for i in result:
-            newPop.extend(i)
-        self.population = newPop
-        p.close()
-        p.join()
-        print('  Cross over done!')
+            self.uniprng.shuffle(indexList1)
+            self.uniprng.shuffle(indexList2)
+
+            # tmp1 = [self.population[i] for i in indexList1]
+            # tmp2 = [self.population[i] for i in indexList2]
+            p1 = [self.population[i].x for i in indexList1]
+            p2 = [self.population[i].x for i in indexList2]
+            newStates = []
+            # p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
+            result = procPool.map(self.__class__.individualType.crossFunc, zip(p1, p2), chunksize=self.CHUNKSIZE)
+            for i in result:
+                newStates.extend(i)
+            for i in range(self.__len__()):
+                self.population[i].x = newStates[i]
+                self.population[i].fit = None
+            print('  Cross over done!')
+        else:
+            super().crossover()
+
 
     def ind_cross(self, parents, prng, cf):
         rn = prng
