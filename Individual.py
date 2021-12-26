@@ -84,7 +84,7 @@ PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
 
 class FullPath(Individual):
-    minMutRate = 1e-5
+    minMutRate = 1e-4
     maxMutRate = 1
     learningRate = 1
     uniprng = Random()
@@ -127,7 +127,8 @@ class FullPath(Individual):
         # self.evaluateFitness()
 
     def crossover(self, other):
-        self.x, other.x = self.crossFunc((self.x, other.x))
+        parents = (copy.deepcopy(self.x), copy.deepcopy(other.x))
+        self.x, other.x = crossing(parents)
         self.fit = None
         other.fit = None
 

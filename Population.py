@@ -40,36 +40,26 @@ class Population:
     def copy(self):
         return copy.deepcopy(self)
 
-    def evaluateFitness(self, procPool):
-        inds = []
-        # only need to eval individuals whose states actually changed
-        for individual in self.population:
-            if individual.fit == None:
-                inds.append(individual)
-
-        # compute all individual fitnesses using parallel process Pool
-        #
-        states = [ind.x for ind in inds]
-        fitnesses = procPool.map(self.__class__.individualType.fitFunc, states)
-        for i in range(len(inds)): inds[i].fit = fitnesses[i]
-
-    '''def evaluateFitness(self):
+    def evaluateFitness(self, procPool=None):
         print('  Evaluating...')
-        for individual in self.population:
-            individual.evaluateFitness()
-            # print('ind: ', individual.x)
-            # print('fit: ', individual.fit)
-        
-        temp = []
-        print('Evaluating...')
-        p = mp.Pool(mp.cpu_count() - self.CORE_RESERVE)
-        result = p.map(self.ind_fitness, self.population, chunksize=self.CHUNKSIZE)
-        temp.extend(result)
-        print('Evaluation done!')
-        p.close()
-        p.join()
-        self.population = temp
-        print('  Evaluation done!')'''
+        if procPool:
+            inds = []
+            # only need to eval individuals whose states actually changed
+            for individual in self.population:
+                if individual.fit == None:
+                    inds.append(individual)
+
+            # compute all individual fitnesses using parallel process Pool
+            #
+            states = [ind.x for ind in inds]
+            fitnesses = procPool.map(self.__class__.individualType.fitFunc, states)
+            for i in range(len(inds)): inds[i].fit = fitnesses[i]
+        else:
+            for individual in self.population:
+                individual.evaluateFitness()
+                # print('ind: ', individual.x)
+                # print('fit: ', individual.fit)
+        print('  Evaluation done!')
 
     def ind_fitness(self, individual):
         individual.evaluateFitness()
@@ -249,8 +239,8 @@ class PopulationMP(Population):
             p1 = [self.population[i].x for i in indexList1]
             p2 = [self.population[i].x for i in indexList2]
             newStates = []
-            # p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
-            result = procPool.map(self.__class__.individualType.crossFunc, zip(p1, p2), chunksize=self.CHUNKSIZE)
+            p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
+            result = procPool.map(p_cross, zip(p1, p2), chunksize=self.CHUNKSIZE)
             for i in result:
                 newStates.extend(i)
             for i in range(self.__len__()):
@@ -264,7 +254,7 @@ class PopulationMP(Population):
     def ind_cross(self, parents, prng, cf):
         rn = prng
         if rn.random() < cf:
-            return parents[0].crossover(parents[1])
+            return self.__class__.individualType.crossFunc(parents)
 
     def conductTournament(self):
         # binary tournament
