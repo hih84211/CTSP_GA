@@ -70,7 +70,7 @@ def CTSP_problem(cfg):
     initClassVars(cfg)
 
     # create initial Population (random initialization)
-    population = Population(populationSize=cfg.populationSize, minmax=minmax)
+    population = PopulationMP(populationSize=cfg.populationSize, minmax=minmax)
     population.evaluateFitness(pool)
     print(type(population))
 
@@ -87,14 +87,14 @@ def CTSP_problem(cfg):
         offspring.conductTournament()
 
         # perform crossover
-        offspring.crossover()
+        offspring.crossover(pool)
 
         # random mutation
         offspring.mutate()
 
         # update fitness values
         #print(offspring.population)
-        offspring.evaluateFitness()
+        offspring.evaluateFitness(pool)
 
         # survivor selection: elitist truncation using parents+offspring
         population.combinePops(offspring)
@@ -192,8 +192,6 @@ def initClassVars(cfg):
     Population.individualType = FullPath
     Population.uniprng = uniprng
     Population.crossoverFraction = cfg.crossoverFraction
-    Population.CORE_RESERVE = cfg.CPUCoresPreserved
-    Population.CHUNKSIZE = int(cfg.populationSize / (mp.cpu_count() - Population.CORE_RESERVE))
 
     PopulationMP.CORE_RESERVE = cfg.CPUCoresPreserved
     PopulationMP.CHUNKSIZE = int(cfg.populationSize / (mp.cpu_count() - PopulationMP.CORE_RESERVE))
