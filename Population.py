@@ -250,7 +250,8 @@ class PopulationMP(Population):
                 p_cross = partial(self.ind_cross, prng=self.uniprng, cf=self.crossoverFraction)
                 result = procPool.map(p_cross, zip(p1, p2), chunksize=self.CHUNKSIZE)
                 for i in result:
-                    newStates.extend(i)
+                    if i:
+                        newStates.extend(i)
 
             for i in range(self.__len__()):
                 self.population[i].x = newStates[i]
@@ -263,8 +264,8 @@ class PopulationMP(Population):
         rn = prng
         if rn.random() < cf:
             return self.__class__.individualType.crossFunc(parents)
-        else:
-            return parents
+        #else:
+        #    return parents
 
     def conductTournament(self):
         # binary tournament
