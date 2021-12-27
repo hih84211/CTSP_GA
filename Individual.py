@@ -101,7 +101,7 @@ class FullPath(Individual):
         self.x = np.array([Rectangle(r) for r in range(self.length)])
         self.fit = None
         self.corner_initialize()
-        np.random.shuffle(self.x)
+        self.uniprng.shuffle(self.x)
         self.evaluateFitness()
 
     def corner_initialize(self):
@@ -117,10 +117,14 @@ class FullPath(Individual):
         if self.mutRate > self.uniprng.random():
             self.uniprng.shuffle(self.x)
             mutated = True
+        elif self.mutRate > self.uniprng.random():
+            self.corner_initialize()
+            mutated = True
         else:
-            for j in range(self.length):
-                if self.mutRate > self.uniprng.random():
-                    self.corner_initialize()
+            rate = self.mutRate * 2
+            for r in self.x:
+                if rate > self.uniprng.random():
+                    self.set_corner_pair(r)
                     mutated = True
         if mutated:
             self.fit = None
