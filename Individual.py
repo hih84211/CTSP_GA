@@ -116,23 +116,32 @@ class FullPath(Individual):
         super().mutateMutRate()
         mutated = False
         if self.mutRate > self.uniprng.random():
-            interval = get_interval(self.length, self.uniprng)
+            self.uniprng.shuffle(self.x)
+            mutated = True
+        elif self.mutRate > self.uniprng.random():
+            t = self.uniprng.randint(1, 3)
             index_list = [i for i in range(self.length)]
-            tmplist = [index_list[:interval[0]], index_list[interval[0]:interval[1]], index_list[interval[1]:]]
-            self.uniprng.shuffle(tmplist)
+            while t > 0:
+                interval = get_interval(self.length, self.uniprng)
+                tmp_list = [index_list[:interval[0]], index_list[interval[0]:interval[1]], index_list[interval[1]:]]
+                self.uniprng.shuffle(tmp_list)
+                index_list = []
+                for intv in tmp_list:
+                    index_list.extend(intv)
+                t -= 1
             tmpind = []
-            for intv in tmplist:
-                tmpind.extend([copy.deepcopy(self.x[i]) for i in intv])
+            for index in index_list:
+                tmpind.append(copy.deepcopy(self.x[index]))
             self.x = np.array(tmpind)
             mutated = True
         # else:
-        if self.mutRate > self.uniprng.random():
+        elif self.mutRate > self.uniprng.random():
             self.corner_initialize()
             mutated = True
         else:
             rate = self.mutRate
             for r in self.x:
-                if rate > self.uniprng.random():
+                if rate > self.uniprng.random() * 2:
                     self.set_corner_pair(r)
                     mutated = True
         if mutated:
