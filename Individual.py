@@ -116,13 +116,21 @@ class FullPath(Individual):
         super().mutateMutRate()
         mutated = False
         if self.mutRate > self.uniprng.random():
-            self.uniprng.shuffle(self.x)
+            interval = get_interval(self.length, self.uniprng)
+            index_list = [i for i in range(self.length)]
+            tmplist = [index_list[:interval[0]], index_list[interval[0]:interval[1]], index_list[interval[1]:]]
+            self.uniprng.shuffle(tmplist)
+            tmpind = []
+            for intv in tmplist:
+                tmpind.extend([copy.deepcopy(self.x[i]) for i in intv])
+            self.x = np.array(tmpind)
             mutated = True
-        elif self.mutRate > self.uniprng.random():
+        # else:
+        if self.mutRate > self.uniprng.random():
             self.corner_initialize()
             mutated = True
         else:
-            rate = self.mutRate * 2
+            rate = self.mutRate
             for r in self.x:
                 if rate > self.uniprng.random():
                     self.set_corner_pair(r)
@@ -245,21 +253,6 @@ def crossing(parents, prng=None):
         child2[i] = p1x[i]
 
     return child1, child2
-
-# (state, mutrate, uniprng)
-def mutate(data):
-    state = data[0]
-    length = len(data[0])
-    mutRate = data[1]
-    uniprng = data[2]
-    for j in range(length):
-        if mutRate > uniprng.random():
-            state[j].i = uniprng.randint(0, 3)
-            state[j].o = PATH_TOOL.get_outcorner(state[j].rect, state[j].i)
-    if mutRate * 10 > uniprng.random():
-        uniprng.shuffle(state)
-
-    return state
 
 def index_of(arr, e):
     return np.where(arr == e)[0]
