@@ -1,6 +1,5 @@
 import copy
 import math
-from random import Random
 from operator import attrgetter
 import numpy as np
 import main
@@ -187,8 +186,10 @@ class PopulationMP(Population):
             # compute all individual fitnesses using parallel process Pool
             #
             states = [ind.x for ind in inds]
-            fitnesses = procPool.map(self.__class__.individualType.fitFunc, states)
-            for i in range(len(inds)): inds[i].fit = fitnesses[i]
+            fitFunc = partial(self.__class__.individualType.fitFunc, cost_type=self.__class__.individualType.costType)
+            fitnesses = procPool.map(fitFunc, states)
+            for i in range(len(inds)):
+                inds[i].fit = fitnesses[i]
             print('  Evaluation done!')
         else:
             super().evaluateFitness()
@@ -262,7 +263,7 @@ class PopulationMP(Population):
     def ind_cross(self, parents, prng, cf):
         rn = prng
         if rn.random() < cf:
-            return self.__class__.individualType.crossFunc(parents)
+            return self.__class__.individualType.crossFunc(parents, prng)
         else:
             return parents
 

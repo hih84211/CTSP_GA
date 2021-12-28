@@ -1,9 +1,6 @@
 import optparse
-
-import numpy as np
-import multiprocessing as mp
 from Population import *
-from Individual import  *
+from Individual import *
 from random import Random
 import yaml
 import sys
@@ -22,6 +19,7 @@ class CTSP_Config:
     # class variables
     sectionName = 'CTSP'
     options = {'CPUCoresPreserved': (int, True),
+               'costType': (int, True),
                'populationSize': (int, True),
                'generationCount': (int, True),
                'randomSeed': (int, True),
@@ -184,6 +182,7 @@ def initClassVars(cfg):
     uniprng.seed(cfg.randomSeed)
     normprng = Random()
     normprng.seed(cfg.randomSeed + 101)
+    FullPath.costType = cfg.costType
     FullPath.uniprng = uniprng
     FullPath.normprng = normprng
     FullPath.fitFunc = cost_func

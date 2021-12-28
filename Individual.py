@@ -89,6 +89,7 @@ class FullPath(Individual):
     learningRate = 1
     uniprng = Random()
     normprng = Random()
+    costType = None
     fitFunc = None
     crossFunc = None
 
@@ -132,7 +133,7 @@ class FullPath(Individual):
 
     def crossover(self, other):
         parents = (copy.deepcopy(self.x), copy.deepcopy(other.x))
-        self.x, other.x = crossing(parents)
+        self.x, other.x = crossing(parents, self.uniprng)
         self.fit = None
         other.fit = None
 
@@ -143,7 +144,7 @@ class FullPath(Individual):
 
     def evaluateFitness(self):
         if self.fit == None:
-            self.fit = self.fitFunc(self.x)
+            self.fit = self.fitFunc(self.x, self.costType)
 
     def __str__(self):
         output = ''
@@ -170,21 +171,27 @@ class Rectangle:
 
 
 # 起點、終點的cost怎麼算？
-def cost_func(path):
+def cost_func(path, cost_type):
     total = 0
     if (len(path)):
         last_r = path[0]
-        for this_r in path:
-            total += PATH_TOOL.dist_euler(RECT_LIST[last_r.rect][last_r.o], RECT_LIST[this_r.rect][this_r.i])
-            total += PATH_TOOL.dist_euler(RECT_LIST[this_r.rect][this_r.i], RECT_LIST[this_r.rect][this_r.o])
-            last_r = this_r
+        if cost_type:
+            for this_r in path:
+                total += PATH_TOOL.dist_max(RECT_LIST[last_r.rect][last_r.o], RECT_LIST[this_r.rect][this_r.i])
+                total += PATH_TOOL.dist_max(RECT_LIST[this_r.rect][this_r.i], RECT_LIST[this_r.rect][this_r.o])
+                last_r = this_r
+        else:
+            for this_r in path:
+                total += PATH_TOOL.dist_euler(RECT_LIST[last_r.rect][last_r.o], RECT_LIST[this_r.rect][this_r.i])
+                total += PATH_TOOL.dist_euler(RECT_LIST[this_r.rect][this_r.i], RECT_LIST[this_r.rect][this_r.o])
+                last_r = this_r
     return total
 
-def crossing(parents):
+def crossing(parents, prng=None):
     p1x = parents[0]
     p2x = parents[1]
     length = len(p1x)
-    interval = get_interval(length)
+    interval = get_interval(length, prng)
     child1 = np.full((length,), Rectangle(-1))
     child2 = np.full((length,), Rectangle(-1))
     remain1 = np.array([i for i in range(length)])
@@ -258,12 +265,16 @@ def index_of(arr, e):
     return np.where(arr == e)[0]
 
 
-def get_interval(len):
-    i1 = np.random.randint(0, len - 2)
-    i2 = np.random.randint(i1 + 1, len)
+def get_interval(len, prng=None):
+    if prng:
+        i1 = prng.randint(0, len - 2)
+        i2 = prng.randint(i1 + 1, len)
+    else:
+        i1 = np.random.randint(0, len - 2)
+        i2 = np.random.randint(i1 + 1, len)
     while (i2 - i1) < 7 or (i2 - i1) == (len - 6):
         # print('Too narrow!', (i1, i2))
-        return get_interval(len)
+        return get_interval(len, prng)
     else:
         return [i1, i2]
 
