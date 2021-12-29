@@ -1,4 +1,8 @@
 import optparse
+import random
+
+import numpy as np
+from functools import partial
 from Population import *
 from Individual import *
 from random import Random
@@ -57,23 +61,24 @@ class CTSP_Config:
         return str(yaml.dump(self.__dict__, default_flow_style=False))
 
 
-
-def CTSP_problem(cfg):
+def CTSP_problem(seed=None, cfg=None, pool=None):
     minmax = 0
-    current_best_fit = np.Inf
-
     start = time.process_time()
-    pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
-
+    total_t = .0
     initClassVars(cfg)
-
+    if seed:
+        cfg.randomSeed = seed
+        island = True
     # create initial Population (random initialization)
-    population = PopulationMP(populationSize=cfg.populationSize, minmax=minmax)
-    population.evaluateFitness(pool)
-    print(type(population))
+    if pool is None:
+        population = Population(populationSize=cfg.populationSize, minmax=minmax)
+        population.evaluateFitness()
+    else:
+        population = PopulationMP(populationSize=cfg.populationSize, minmax=minmax)
+        population.evaluateFitness(pool)
 
     # print initial pop stats
-    printStats(minmax=minmax, pop=population, gen=0, lb=current_best_fit, total_t=(time.process_time() - start))
+    _, current_best = printStats(minmax=minmax, pop=population, gen=0, lb=np.Inf, total_t=(time.process_time() - start))
 
     # evolution main loop
     for i in range(cfg.generationCount):
@@ -85,28 +90,38 @@ def CTSP_problem(cfg):
         offspring.conductTournament()
 
         # perform crossover
-        offspring.crossover(pool)
+        if pool is None:
+            offspring.crossover()
+        else:
+            offspring.crossover(pool)
 
         # random mutation
         offspring.mutate()
 
         # update fitness values
-        #print(offspring.population)
-        offspring.evaluateFitness(pool)
+        if pool is None:
+            offspring.evaluateFitness()
+        else:
+            offspring.evaluateFitness(pool)
 
         # survivor selection: elitist truncation using parents+offspring
         population.combinePops(offspring)
         population.truncateSelect(cfg.populationSize)
 
         toc = time.process_time()
+        total_t = toc - start
         # print population stats
-        current_best_fit = printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic),
-                                      total_t=(toc - start), lb=current_best_fit)
+        current_avg, current_best = printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic),
+                                               total_t=total_t, lb=current_best.fit)
+        if current_avg - current_best.fit < 1e-4:
+            break
+
+    return current_best, total_t
 
 
 # Print some useful stats to screen
 # 可由minmax參數選擇呈現最大值或最小值
-def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0):
+def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
     print('Generation:', gen)
     print('Population size: ', len(pop.population))
     avgval = 0
@@ -120,8 +135,8 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0):
                 mval = ind.fit
                 sigma = ind.mutRate
                 min_ind = ind
-        if(mval < lb):
-            PATH_TOOL.path_plot(min_ind.x)
+        #if(mval < lb):
+            #PATH_TOOL.path_plot(min_ind.x)
         print('Min fitness', mval)
     elif minmax == 1:
         for ind in pop:
@@ -138,7 +153,27 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0):
     print('Gen runtime ', tictoc)
     print('Total runtime ', total_t)
     print('')
-    return mval
+    return avgval / len(pop), copy.deepcopy(min_ind)
+
+
+def looper(times, cfg):
+    pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
+    best_inds = []
+    prng = random.Random()
+    prng.seed(cfg.randomSeed)
+    seeds = prng.choices([i for i in range(1, 10000)], k=times)
+
+    tsp_task = partial(CTSP_problem, cfg=cfg, pool=None)
+    result = pool.map(tsp_task, seeds)
+
+    '''for t in range(times):
+        cfg.randomSeed = prng.choice(seeds)
+        best_inds.append(CTSP_problem(cfg, pool))'''
+    for ind in result:
+        PATH_TOOL.path_plot(ind[0].x)
+        print('Best fit: ', ind[0].fit)
+        print('Runtime: ', ind[1])
+        print('-----------------------------')
 
 
 def main(argv=None):
@@ -165,7 +200,8 @@ def main(argv=None):
         print(cfg)
 
         print('Clustered-TSP path length minimization start!')
-        CTSP_problem(cfg)
+        # CTSP_problem(cfg, 1)
+        looper(8, cfg)
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 

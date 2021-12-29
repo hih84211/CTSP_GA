@@ -38,13 +38,10 @@ class Population:
         return copy.deepcopy(self)
 
     def evaluateFitness(self):
-        print('  Evaluating...')
         for individual in self.population:
             individual.evaluateFitness()
             # print('ind: ', individual.x)
             # print('fit: ', individual.fit)
-
-        print('  Evaluation done!')
 
     def ind_fitness(self, individual):
         individual.evaluateFitness()
@@ -55,13 +52,10 @@ class Population:
         states = [ind.x for ind in inds]
         fitnesses = procPool.map(self.__class__.individualType.mutate, states)
         for i in range(len(inds)): inds[i].fit = fitnesses[i]'''
-        print('  Mutating...')
         for individual in self.population:
             individual.mutate()
-        print('  Mutation done!')
 
     def crossover(self):
-        print('  Crossing...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
         self.uniprng.shuffle(indexList1)
@@ -80,11 +74,9 @@ class Population:
                     # print('[index2]: ', index2, tmp[index2])
                     # self[index1].crossover(self[index2])
                     self[index1].crossover(tmp[index2])
-        print('  Crossover done!')
 
     def conductTournament(self):
         # binary tournament
-        print('  Conducting binary tournament...')
         indexList1 = list(range(len(self)))
         indexList2 = list(range(len(self)))
 
@@ -131,7 +123,6 @@ class Population:
 
         # overwrite old pop with newPop
         self.population = newPop
-        print('  Binary tournament done!')
 
     def combinePops(self, otherPop):
         self.population.extend(otherPop.population)
