@@ -84,7 +84,7 @@ PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
 
 class FullPath(Individual):
-    minMutRate = 1e-4
+    minMutRate = 5e-4
     maxMutRate = 1
     learningRate = 1
     uniprng = Random()

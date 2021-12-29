@@ -97,7 +97,7 @@ class PathToolBox:
             angle1 = 360 + angle1
         return angle1
 
-    '''
+    # vector_barrier:到所有障礙物的向量(list)，euler_barrier:到所有障礙物的距離(list)
     def barrier_detect(self, vector_barrier, euler_barrier, vector, euler):
         # size of all inputs : num_rec_corners x B x [value]
         self.barrier_path = []
@@ -156,7 +156,7 @@ class PathToolBox:
                     pass
                 rewards = torch.tensor(rewards)
                 return rewards
-                '''
+
 
 
     def get_shortest_side(self, rect):
