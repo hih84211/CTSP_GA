@@ -84,7 +84,7 @@ PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
 
 class FullPath(Individual):
-    minMutRate = 2e-4
+    minMutRate = 5e-4
     maxMutRate = 1
     learningRate = 1
     uniprng = Random()
@@ -120,7 +120,7 @@ class FullPath(Individual):
             mutated = True
         '''
         if self.mutRate > self.uniprng.random():
-            t = self.uniprng.choice([1, 1, 1, 2, 2, 3])
+            t = self.uniprng.choice([1, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 4, 5, 6])
             index_list = [i for i in range(self.length)]
             while t > 0:
                 interval = get_interval(self.length, self.uniprng)
@@ -136,15 +136,17 @@ class FullPath(Individual):
             self.x = np.array(tmpind)
             mutated = True
 
-        elif self.mutRate / 2 > self.uniprng.random():
+        if self.mutRate > self.uniprng.random() or self.mutRate >= 0.5:
             self.corner_initialize()
             mutated = True
         else:
             rate = self.mutRate
             for r in self.x:
-                if rate > self.uniprng.random() * 2:
+                if rate * 2 > self.uniprng.random():
                     self.set_corner_pair(r)
                     mutated = True
+
+
         if mutated:
             self.fit = None
         # self.evaluateFitness()

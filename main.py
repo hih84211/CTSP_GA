@@ -163,7 +163,6 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
 
 def looper(times, cfg):
     pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
-    best_inds = []
     prng = random.Random()
     prng.seed(cfg.randomSeed)
     seeds = prng.choices([i for i in range(1, 10000)], k=times)
@@ -213,7 +212,7 @@ def main(argv=None):
         print('Clustered-TSP path length minimization start!')
         # pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
         # CTSP_problem(cfg=cfg, pool=pool)
-        looper(12, cfg)
+        looper(16, cfg)
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 
