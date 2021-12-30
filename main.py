@@ -65,10 +65,11 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
     minmax = 0
     start = time.process_time()
     total_t = .0
-    initClassVars(cfg)
+
     if seed:
         cfg.randomSeed = seed
-        island = True
+    initClassVars(cfg)
+
     # create initial Population (random initialization)
     if pool is None:
         population = Population(populationSize=cfg.populationSize, minmax=minmax)
@@ -115,6 +116,10 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
                                                total_t=total_t, lb=current_best.fit)
         if current_avg - current_best.fit < 1e-4:
             break
+    print('--------')
+    print('Done!')
+    print('--------')
+    print('')
 
     return current_best, total_t
 
@@ -148,7 +153,7 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
 
         print('Max fitness', mval)
 
-    print('Sigma', sigma)
+    # print('Sigma', sigma)
     print('Avg fitness', avgval / len(pop))
     print('Gen runtime ', tictoc)
     print('Total runtime ', total_t)
@@ -169,11 +174,17 @@ def looper(times, cfg):
     '''for t in range(times):
         cfg.randomSeed = prng.choice(seeds)
         best_inds.append(CTSP_problem(cfg, pool))'''
+    mvp = result[0][0]
     for ind in result:
-        PATH_TOOL.path_plot(ind[0].x)
+        # PATH_TOOL.path_plot(ind[0].x)
         print('Best fit: ', ind[0].fit)
         print('Runtime: ', ind[1])
         print('-----------------------------')
+        if ind[0].fit < mvp.fit:
+            mvp = ind[0]
+    print('*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*')
+    PATH_TOOL.path_plot(mvp.x)
+    print('The GOAT: ', mvp.fit)
 
 
 def main(argv=None):
@@ -200,8 +211,9 @@ def main(argv=None):
         print(cfg)
 
         print('Clustered-TSP path length minimization start!')
-        # CTSP_problem(cfg, 1)
-        looper(8, cfg)
+        # pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
+        # CTSP_problem(cfg=cfg, pool=pool)
+        looper(12, cfg)
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 
