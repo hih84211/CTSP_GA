@@ -116,6 +116,14 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
                                                total_t=total_t, lb=current_best.fit)
         if current_avg - current_best.fit < 1e-4:
             break
+        if i > 150 and current_best.fit > 3800:
+            break
+        if i > 160 and current_best.fit > 3650:
+            break
+        if i > 190 and current_best.fit > 3500:
+            break
+        if i > 225 and current_best.fit > 3425:
+            break
     print('--------')
     print('Done!')
     print('--------')
@@ -212,7 +220,7 @@ def main(argv=None):
         print('Clustered-TSP path length minimization start!')
         # pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
         # CTSP_problem(cfg=cfg, pool=pool)
-        looper(16, cfg)
+        looper(6, cfg)
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 
