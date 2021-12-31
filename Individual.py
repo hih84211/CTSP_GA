@@ -115,10 +115,10 @@ class FullPath(Individual):
     def mutate(self):
         super().mutateMutRate()
         mutated = False
-        if self.mutRate / 5 > self.uniprng.random():
+        if self.mutRate > self.uniprng.random():
             self.uniprng.shuffle(self.x)
 
-        elif self.mutRate > self.uniprng.random():
+        elif self.mutRate * 2 > self.uniprng.random():
             t = self.uniprng.choice([1, 1, 1, 1, 2, 2, 2, 3, 3, 4])
             index_list = [i for i in range(self.length)]
             while t > 0:
@@ -135,13 +135,13 @@ class FullPath(Individual):
             self.x = np.array(tmpind)
             mutated = True
 
-        if self.mutRate > self.uniprng.random() or self.mutRate >= 0.5:
+        if self.mutRate > self.uniprng.random():
             self.corner_initialize()
             mutated = True
         else:
             rate = self.mutRate
             for r in self.x:
-                if rate * 2 > self.uniprng.random():
+                if min(0.5, rate * 3) > self.uniprng.random():
                     self.set_corner_pair(r)
                     mutated = True
 

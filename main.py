@@ -1,6 +1,6 @@
 import optparse
 import random
-
+import csv_test
 import numpy as np
 from functools import partial
 from Population import *
@@ -79,10 +79,12 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
         population.evaluateFitness(pool)
 
     # print initial pop stats
-    _, current_best = printStats(minmax=minmax, pop=population, gen=0, lb=np.Inf, total_t=(time.process_time() - start))
+    current_best, current_avg = printStats(minmax=minmax, pop=population, gen=0, lb=np.Inf, total_t=(time.process_time() - start))
 
+    gen = 0
     # evolution main loop
     for i in range(cfg.generationCount):
+        gen = i
         tic = time.process_time()
         # create initial offspring population by copying parent pop
         offspring = copy.deepcopy(population)
@@ -112,24 +114,24 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
         toc = time.process_time()
         total_t = toc - start
         # print population stats
-        current_avg, current_best = printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic),
+        current_best, current_avg = printStats(minmax=minmax, pop=population, gen=i + 1, tictoc=(toc - tic),
                                                total_t=total_t, lb=current_best.fit)
         if current_avg - current_best.fit < 1e-4:
             break
         if i > 150 and current_best.fit > 3800:
             break
-        if i > 160 and current_best.fit > 3650:
+        if i > 170 and current_best.fit > 3650:
             break
-        if i > 190 and current_best.fit > 3500:
+        if i > 200 and current_best.fit > 3500:
             break
-        if i > 225 and current_best.fit > 3425:
+        if i > 250 and current_best.fit > 3425:
             break
     print('--------')
     print('Done!')
     print('--------')
     print('')
 
-    return current_best, total_t
+    return [current_best, current_avg, gen, total_t]
 
 
 # Print some useful stats to screen
@@ -166,16 +168,19 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
     print('Gen runtime ', tictoc)
     print('Total runtime ', total_t)
     print('')
-    return avgval / len(pop), copy.deepcopy(min_ind)
+    return copy.deepcopy(min_ind), avgval / len(pop)
 
 
-def looper(times, cfg):
+def looper(times, cfg, file):
+    csv_writer = csv_test.CsvWriter(file)
+    csv_writer.write({'populationSize': cfg.populationSize})
     pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
     prng = random.Random()
     prng.seed(cfg.randomSeed)
     seeds = prng.choices([i for i in range(1, 10000)], k=times)
 
     tsp_task = partial(CTSP_problem, cfg=cfg, pool=None)
+    # result: current_best, current_avg, gen, total_t
     result = pool.map(tsp_task, seeds)
 
     '''for t in range(times):
@@ -185,7 +190,10 @@ def looper(times, cfg):
     for ind in result:
         # PATH_TOOL.path_plot(ind[0].x)
         print('Best fit: ', ind[0].fit)
-        print('Runtime: ', ind[1])
+        print('Average: ', ind[1])
+        print('Generation: ', ind[2])
+        print('Runtime: ', ind[3])
+        csv_writer.write({'bestFit': ind[0].fit, 'avgFit': ind[1], 'gen': ind[2], 'genRuntime': ind[3]})
         print('-----------------------------')
         if ind[0].fit < mvp.fit:
             mvp = ind[0]
@@ -203,6 +211,7 @@ def main(argv=None):
         #
         parser = optparse.OptionParser()
         parser.add_option("-i", "--input", action="store", dest="inputFileName", help="input filename", default=None)
+        parser.add_option("-o", "--output", action="store", dest="outputFileName", help="output filename", default=None)
         parser.add_option("-q", "--quiet", action="store_true", dest="quietMode", help="quiet mode", default=False)
         parser.add_option("-d", "--debug", action="store_true", dest="debugMode", help="debug mode", default=False)
         (options, args) = parser.parse_args(argv)
@@ -220,7 +229,7 @@ def main(argv=None):
         print('Clustered-TSP path length minimization start!')
         # pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
         # CTSP_problem(cfg=cfg, pool=pool)
-        looper(6, cfg)
+        looper(30, cfg, options.outputFileName)
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 
@@ -255,6 +264,6 @@ def initClassVars(cfg):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    main(['-i', 'CTSP.cfg', '-d'])
+    main(['-i', 'CTSP.cfg', '-d', '-o', 'data,csv'])
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
