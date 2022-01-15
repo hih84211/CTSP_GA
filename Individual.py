@@ -84,7 +84,7 @@ PATH_TOOL = utility.PathToolBox(RECT_LIST, GLUE_WIDTH, MB_INFO[2])
 
 
 class FullPath(Individual):
-    minMutRate = 5e-4
+    minMutRate = 2e-4
     maxMutRate = 1
     learningRate = 1
     uniprng = Random()
@@ -115,15 +115,18 @@ class FullPath(Individual):
     def mutate(self):
         super().mutateMutRate()
         mutated = False
+
         if self.mutRate > self.uniprng.random():
             self.uniprng.shuffle(self.x)
 
-        elif self.mutRate * 2 > self.uniprng.random():
-            t = self.uniprng.choice([1, 1, 1, 1, 2, 2, 2, 3, 3, 4])
+        if self.mutRate > self.uniprng.random():
+            t = self.uniprng.choice([1, 1, 1, 1, 2])
             index_list = [i for i in range(self.length)]
             while t > 0:
                 interval = get_interval(self.length, self.uniprng)
-                tmp_list = [index_list[:interval[0]], index_list[interval[0]:interval[1]], index_list[interval[1]:]]
+                tmp_list = [index_list[:interval[0]],
+                            index_list[interval[0]:interval[1]],
+                            index_list[interval[1]:]]
                 self.uniprng.shuffle(tmp_list)
                 index_list = []
                 for intv in tmp_list:
@@ -134,7 +137,6 @@ class FullPath(Individual):
                 tmpind.append(copy.deepcopy(self.x[index]))
             self.x = np.array(tmpind)
             mutated = True
-
         if self.mutRate > self.uniprng.random():
             self.corner_initialize()
             mutated = True
@@ -149,6 +151,8 @@ class FullPath(Individual):
             self.fit = None
         # self.evaluateFitness()
 
+    ''''''
+    ''''''
     def crossover(self, other):
         parents = (copy.deepcopy(self.x), copy.deepcopy(other.x))
         self.x, other.x = crossing(parents, self.uniprng)

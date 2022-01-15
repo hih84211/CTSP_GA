@@ -1,4 +1,7 @@
 import csv
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 
 class CsvWriter:
     def __init__(self, file):
@@ -16,16 +19,36 @@ class CsvWriter:
 
 
 if __name__=='__main__':
-    fields = ['org', '2015', '2014', '2013']
-    dw = {'orgname1': {'2015': [2, 3], '2014': 1, '2013': 1},
-          'orgname2': {'2015': 1, '2014': 2, '2013': 3},
-          'orgname3': {'2015': 1, '2014': 3, '2013': 1}}
+    SMALL_SIZE = 8
+    MEDIUM_SIZE = 10
+    BIGGER_SIZE = 20
 
-    #print(dw['orgname1']['2015'])
+    var = pd.read_excel('for_plot.xlsx')
+    # print(var)
 
-    with open("store_data.csv", mode="a", newline='') as f:
-        w = csv.DictWriter(f, fields)
-        w.writeheader()
-        for k in dw:
-            print(k)
-            w.writerow({field: dw[k].get(field) or k for field in fields})
+    x = list(var['genRuntime'])
+    y = list(var['bestFit'])
+
+    plt.boxplot(y)
+    plt.show()
+
+    #plt.figure(figsize=(15, 15))
+    plt.rc('font', size=SMALL_SIZE)  # controls default text sizes
+    plt.rc('axes', titlesize=SMALL_SIZE)  # fontsize of the axes title
+    plt.rc('axes', labelsize=MEDIUM_SIZE)  # fontsize of the x and y labels
+    plt.rc('xtick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('ytick', labelsize=SMALL_SIZE)  # fontsize of the tick labels
+    plt.rc('legend', fontsize=SMALL_SIZE)  # legend fontsize
+    plt.rc('figure', titlesize=BIGGER_SIZE)  # fontsize of the figure title
+
+    #plt.style.use('seaborn')
+    #plt.style.use('_mpl-gallery')
+    # plt.scatter(x, y, marker="*", s=100, edgecolors="black", c="yellow")
+    # plt.scatter(x, y, edgecolors="black",)
+    fig, ax2 = plt.subplots()
+    ax2.scatter(x, y, edgecolors="black")
+    plt.show()
+    # plt.xlabel("Runtime in sec")
+    # plt.ylabel("Distance in pixel unit")
+    # plt.title("Some title here")
+

@@ -60,18 +60,12 @@ class PathToolBox:
         self.gray = img
 
     def path_plot(self, path=None):
-        plt.imshow(self.gray, cmap=plt.get_cmap('gray'))
+        # plt.imshow(self.gray, cmap=plt.get_cmap('gray'))
         if path is None:
             for rect in self.target_regions:
-                # vertices = np.concatenate([rect, [rect[0]]], axis=0)
-                vertices = np.concatenate([rect])
-                print(vertices)
+                vertices = np.concatenate([rect, [rect[0]]], axis=0)
                 plt.plot(vertices[:, 0], vertices[:, 1], color='red')
-                if self.get_shortest_side(rect)[0]:
-                    plt.plot(vertices[1:3, 0], vertices[1:3, 1], color='blue')
-                if not self.get_shortest_side(rect)[0]:
-                    plt.plot(vertices[0:2, 0], vertices[0:2, 1], color='green')
-        if path.any():
+        if path.any:
             corners = [self.target_regions[path[0].rect][path[0].i]]
             for rect in path:
                 vertices = np.concatenate([self.target_regions[rect.rect],
@@ -98,7 +92,7 @@ class PathToolBox:
         return angle1
 
     # vector_barrier:到所有障礙物的向量(list)，euler_barrier:到所有障礙物的距離(list)
-    def barrier_detect(self, vector_barrier, euler_barrier, vector, euler):
+    '''def barrier_detect(self, vector_barrier, euler_barrier, vector, euler):
         # size of all inputs : num_rec_corners x B x [value]
         self.barrier_path = []
         rewards = [0] * len(vector_barrier[0])
@@ -155,7 +149,7 @@ class PathToolBox:
                 else:
                     pass
                 rewards = torch.tensor(rewards)
-                return rewards
+                return rewards'''
 
 
 

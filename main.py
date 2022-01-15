@@ -118,20 +118,18 @@ def CTSP_problem(seed=None, cfg=None, pool=None):
                                                total_t=total_t, lb=current_best.fit)
         if current_avg - current_best.fit < 1e-4:
             break
-        if i > 150 and current_best.fit > 3800:
+        if i > 180 and current_best.fit > 3800:
             break
-        if i > 170 and current_best.fit > 3650:
+        if i > 250 and current_best.fit > 3600:
             break
-        if i > 200 and current_best.fit > 3500:
-            break
-        if i > 250 and current_best.fit > 3425:
+        if i > 280 and current_best.fit > 3550:
             break
     print('--------')
     print('Done!')
     print('--------')
     print('')
 
-    return [current_best, current_avg, gen, total_t]
+    return current_best, current_avg, gen, total_t
 
 
 # Print some useful stats to screen
@@ -163,7 +161,7 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
 
         print('Max fitness', mval)
 
-    # print('Sigma', sigma)
+    print('Sigma', sigma)
     print('Avg fitness', avgval / len(pop))
     print('Gen runtime ', tictoc)
     print('Total runtime ', total_t)
@@ -171,13 +169,13 @@ def printStats(minmax, pop, gen, lb, tictoc=.0, total_t=.0) -> object:
     return copy.deepcopy(min_ind), avgval / len(pop)
 
 
-def looper(times, cfg, file):
+def paralleled_CTSP_problem(times, cfg, file):
     csv_writer = csv_test.CsvWriter(file)
     csv_writer.write({'populationSize': cfg.populationSize})
     pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
     prng = random.Random()
     prng.seed(cfg.randomSeed)
-    seeds = prng.choices([i for i in range(1, 10000)], k=times)
+    seeds = prng.choices([i for i in range(10000, 100000)], k=times)
 
     tsp_task = partial(CTSP_problem, cfg=cfg, pool=None)
     # result: current_best, current_avg, gen, total_t
@@ -229,7 +227,38 @@ def main(argv=None):
         print('Clustered-TSP path length minimization start!')
         # pool = mp.Pool(initializer=initClassVars, initargs=(cfg,), processes=(mp.cpu_count() - cfg.CPUCoresPreserved))
         # CTSP_problem(cfg=cfg, pool=pool)
-        looper(30, cfg, options.outputFileName)
+        '''
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+        cfg.randomSeed += random.randint(1, 1000)
+
+        cfg.populationSize = 7500
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+        cfg.populationSize = 5000
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+        cfg.populationSize = 2500
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+        cfg.populationSize = 1250
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+        # Complete the experiments
+        cfg.randomSeed += random.randint(1, 1000)
+        cfg.populationSize = 7500
+        paralleled_CTSP_problem(10, cfg, options.outputFileName)
+
+        cfg.populationSize = 5000
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+        cfg.populationSize = 2500
+        paralleled_CTSP_problem(90, cfg, options.outputFileName)
+        '''
+
+        cfg.populationSize = 1250
+        paralleled_CTSP_problem(30, cfg, options.outputFileName)
+
+
         if not options.quietMode:
             print('Clustered-TSP path length minimization Completed!\n')
 
@@ -240,6 +269,7 @@ def main(argv=None):
             print_exc()
         else:
             print(info)
+
 
 def initClassVars(cfg):
     uniprng = Random()
@@ -264,6 +294,7 @@ def initClassVars(cfg):
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    main(['-i', 'CTSP.cfg', '-d', '-o', 'data,csv'])
+    main(['-i', 'CTSP.cfg', '-d', '-o', 'data0115.csv'])
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/

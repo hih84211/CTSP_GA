@@ -167,7 +167,7 @@ class PopulationMP(Population):
 
     def evaluateFitness(self, procPool):
         if procPool:
-            print('  Evaluating...')
+            # print('  Evaluating...')
             inds = []
             # only need to eval individuals whose states actually changed
             for individual in self.population:
@@ -181,7 +181,7 @@ class PopulationMP(Population):
             fitnesses = procPool.map(fitFunc, states)
             for i in range(len(inds)):
                 inds[i].fit = fitnesses[i]
-            print('  Evaluation done!')
+            # print('  Evaluation done!')
         else:
             super().evaluateFitness()
 
@@ -204,12 +204,12 @@ class PopulationMP(Population):
     def mutate(self, procPool = None):
 
         if procPool:
-            print('  Mutating...')
+            # print('  Mutating...')
             temp = []
             result = procPool.map(self.ind_mutate, self.population, chunksize=self.CHUNKSIZE)
             temp.extend(result)
             self.population = temp
-            print('  Mutation done!')
+            # print('  Mutation done!')
         else:
             super().mutate()
 
@@ -221,7 +221,7 @@ class PopulationMP(Population):
 
     def crossover(self, procPool=None):
         if procPool:
-            print('  Crossing...')
+            # print('  Crossing...')
 
             indexList1 = list(range(len(self)))
             indexList2 = list(range(len(self)))
@@ -247,7 +247,7 @@ class PopulationMP(Population):
             for i in range(self.__len__()):
                 self.population[i].x = newStates[i]
                 self.population[i].fit = None
-            print('  Cross over done!')
+            # print('  Cross over done!')
         else:
             super().crossover()
 
